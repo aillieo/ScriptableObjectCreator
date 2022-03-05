@@ -144,7 +144,7 @@ namespace AillieoUtils.Editor
 
             EditorGUILayout.LabelField($"Will create:", fullpath);
 
-            bool invalid = string.IsNullOrEmpty(className) || !AssetDatabase.IsValidFolder(folderPath) || string.IsNullOrWhiteSpace(newAssetName);
+            bool invalid = string.IsNullOrEmpty(className) || !AssetDatabase.IsValidFolder(folderPath) || string.IsNullOrWhiteSpace(fullpath);
 
             using (var scope = new EditorGUI.DisabledScope(invalid))
             {
