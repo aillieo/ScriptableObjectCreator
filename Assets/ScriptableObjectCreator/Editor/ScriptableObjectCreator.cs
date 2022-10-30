@@ -8,16 +8,25 @@ using UnityEditor.IMGUI.Controls;
 using System.Reflection;
 using UnityEditor.Compilation;
 
-namespace AillieoUtils.Editor
+namespace AillieoUtils
 {
-    public class ScriptableObjectCreator : EditorWindow
+    internal class ScriptableObjectCreator : EditorWindow
     {
         [MenuItem("Assets/AillieoUtils/Create ScriptableObject")]
         [MenuItem("AillieoUtils/ScriptableObject Creator")]
         public static void OpenWindow()
         {
-            GetWindow<ScriptableObjectCreator>("Scriptable Object Creator");
+            ScriptableObjectCreator creator = GetWindow<ScriptableObjectCreator>("Scriptable Object Creator");
+            string currentFolder = GetCurrentFolder();
+            if (!string.IsNullOrEmpty(currentFolder))
+            {
+                creator.folder = AssetDatabase.LoadAssetAtPath<DefaultAsset>(currentFolder);
+            }
+
+            creator.closeAfterCreation = EditorPrefs.GetBool(keyCloseAfterCreation, true);
         }
+
+        private static readonly string keyCloseAfterCreation = "AillieoUtils.ScriptableObjectCreator.closeAfterCreation";
 
         // 静态 一共存一份
         private static Type[] scriptableObjectTypes;
@@ -26,6 +35,7 @@ namespace AillieoUtils.Editor
         private SearchField searchField;
 
         // 运行时窗口数据
+        private bool closeAfterCreation;
         private List<Type> typesFiltered = new List<Type>();
         private string filter = string.Empty;
         private string className = string.Empty;
@@ -146,6 +156,8 @@ namespace AillieoUtils.Editor
 
             bool invalid = string.IsNullOrEmpty(className) || !AssetDatabase.IsValidFolder(folderPath) || string.IsNullOrWhiteSpace(fullpath);
 
+            EditorGUILayout.BeginHorizontal();
+
             using (var scope = new EditorGUI.DisabledScope(invalid))
             {
                 if (GUILayout.Button("Create"))
@@ -155,13 +167,46 @@ namespace AillieoUtils.Editor
                     AssetDatabase.SaveAssets();
                     AssetDatabase.Refresh();
                     Selection.activeObject = newAsset;
+
+                    if (closeAfterCreation)
+                    {
+                        this.Close();
+                    }
                 }
             }
+
+            using (var scope = new EditorGUI.ChangeCheckScope())
+            {
+                closeAfterCreation = EditorGUILayout.ToggleLeft(
+                    "Close After Creation",
+                    closeAfterCreation,
+                    GUILayout.ExpandWidth(false));
+
+                if (scope.changed)
+                {
+                    EditorPrefs.SetBool(keyCloseAfterCreation, closeAfterCreation);
+                }
+            }
+
+            EditorGUILayout.EndHorizontal();
         }
 
         private static bool ContainsIgnoreCase(string str, string value)
         {
             return str.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static string GetCurrentFolder()
+        {
+            MethodInfo methodInfo = 
+                typeof(ProjectWindowUtil)
+                .GetMethod("GetActiveFolderPath", BindingFlags.Static | BindingFlags.NonPublic);
+            if (methodInfo == null)
+            {
+                return null;
+            }
+
+            return (string)methodInfo.Invoke(null, null);
         }
     }
 }
